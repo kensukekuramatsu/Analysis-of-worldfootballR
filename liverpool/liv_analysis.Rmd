@@ -1,0 +1,386 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# devtools::install_github("JaseZiv/worldfootballR")
+library(tidyverse)
+library(worldfootballR)
+
+theme_set(theme_bw())
+
+```
+
+
+```{r, eval=FALSE}
+passing <- get_season_team_stats(country = "ENG", gender = "M", season_end_year = c(2017:2021), stat_type = "passing")
+saveRDS(passing, here::here("liverpool", "passing.rds"))
+passing_types <- get_season_team_stats(country = "ENG", gender = "M", season_end_year = c(2017:2021), stat_type = "passing_types")
+saveRDS(passing_types, here::here("liverpool", "passing_types.rds"))
+standard <- get_season_team_stats(country = "ENG", gender = "M", season_end_year = c(2017:2021), stat_type = "standard")
+saveRDS(standard, here::here("liverpool", "standard.rds"))
+possession <- get_season_team_stats(country = "ENG", gender = "M", season_end_year = c(2018:2021), stat_type = "possession")
+saveRDS(possession, here::here("liverpool", "possession.rds"))
+```
+
+
+
+```{r}
+passing <- readRDS(here::here("liverpool", "passing.rds"))
+
+
+# Interesting, Liverpool completing more passes per game this season
+passing %>% 
+  mutate(ppa_game = PPA / Mins_Per_90) %>%
+  # filter(Team_or_Opponent == "team") %>%
+  mutate(is_reds = str_detect(Squad, "Liverpool")) %>% 
+  ggplot(aes(x= Season_End_Year, y= ppa_game, colour = is_reds, group = Squad)) +
+  geom_line() +
+  scale_colour_manual(values = c("grey", "red")) +
+  facet_wrap(~ Team_or_Opponent)
+
+
+# Interesting, Liverpool completing more passes per game this season
+passing %>% 
+  mutate(Cmp_Total_per_game = Cmp_Total / Mins_Per_90) %>%
+  filter(Team_or_Opponent == "team") %>%
+  mutate(is_reds = str_detect(Squad, "Liverpool")) %>% 
+  ggplot(aes(x= Season_End_Year, y= Cmp_Total_per_game, colour = is_reds, group = Squad)) +
+  geom_line() +
+  scale_colour_manual(values = c("grey", "red"))
+
+
+# passes attempted up this season:
+passing %>% 
+  group_by(Season_End_Year) %>% 
+  summarise(total_att = sum(Att_Total),
+            total_matches = sum(Mins_Per_90)) %>% 
+  mutate(att_per_game = total_att / total_matches) %>% 
+  ggplot(aes(x= Season_End_Year, y= att_per_game, group = 1)) +
+  geom_line()
+
+
+# league completion rate increasing:
+passing %>% 
+  group_by(Season_End_Year) %>% 
+  summarise(total_att = sum(Att_Total),
+            total_cmp = sum(Cmp_Total)) %>% 
+  mutate(cmp_percent = total_cmp / total_att) %>% 
+  ggplot(aes(x= Season_End_Year, y= cmp_percent, group = 1)) +
+  geom_line()
+
+
+
+# may be interesting - Reds continue to make more long passes per game, while medium passes per game now the highest in league
+passing %>% 
+  select(Squad, Season_End_Year, Team_or_Opponent, Mins_Per_90, starts_with("Att_")) %>% 
+  pivot_longer(cols = Att_Short:Att_Long, names_to = "Var", values_to = "n_att") %>% 
+  mutate(att_pass_per_game = n_att / Mins_Per_90) %>%
+  # filter(Team_or_Opponent == "team") %>%
+  mutate(is_reds = str_detect(Squad, "Liverpool")) %>% 
+  ggplot(aes(x= Season_End_Year, y= att_pass_per_game, colour = is_reds, group = Squad)) +
+  geom_line() +
+  scale_colour_manual(values = c("grey", "red")) +
+  facet_grid(Team_or_Opponent ~ Var)
+
+
+# interesting:
+passing %>% 
+  mutate(prog_per_game = Prog / Mins_Per_90) %>%
+  filter(Team_or_Opponent == "team") %>%
+  mutate(is_reds = str_detect(Squad, "Liverpool")) %>% 
+  ggplot(aes(x= Season_End_Year, y= prog_per_game, colour = is_reds, group = Squad)) +
+  geom_line() +
+  scale_colour_manual(values = c("grey", "red"))
+```
+
+
+## Passing Types
+
+```{r}
+# drop in switches per game
+passing_types %>% 
+  filter(Team_or_Opponent == "team") %>%
+  mutate(is_reds = str_detect(Squad, "Liverpool"),
+         switches_game = Sw_Pass / Mins_Per_90) %>%
+  ggplot(aes(x= Season_End_Year, y= switches_game, colour = is_reds, group = Squad)) +
+  geom_line()
+
+
+# passing_types %>%
+#   filter(Team_or_Opponent == "team") %>%
+#   mutate(is_reds = str_detect(Squad, "Liverpool")) %>%
+#   mutate(ground_pass_perc = Ground_Height / Att) %>%
+#   ggplot(aes(x= Season_End_Year, y= ground_pass_perc, colour = is_reds, group = Squad)) +
+#   geom_line() +
+#   scale_colour_manual(values = c("grey", "red"))
+  
+# making more crosses per game
+passing_types %>%
+  filter(Team_or_Opponent == "team") %>%
+  mutate(is_reds = str_detect(Squad, "Liverpool")) %>%
+  mutate(cross_game = Crs_Pass / Mins_Per_90) %>%
+  ggplot(aes(x= Season_End_Year, y= cross_game, colour = is_reds, group = Squad)) +
+  geom_line() +
+  scale_colour_manual(values = c("grey", "red"))
+  
+```
+
+
+## Possessions
+
+```{r}
+possession %>%
+  filter(Team_or_Opponent == "team") %>%
+  mutate(is_reds = str_detect(Squad, "Liverpool"),
+         Carries_per_game = Carries_Carries / Mins_Per_90) %>%
+  ggplot(aes(x= Season_End_Year, y= Carries_per_game, colour = is_reds, group = Squad)) +
+  geom_line() +
+  scale_colour_manual(values = c("grey", "red"))
+
+
+# possession %>%
+#   filter(Team_or_Opponent == "team") %>%
+#   mutate(is_reds = str_detect(Squad, "Liverpool"),
+#          progressive_carry_yards_per_carry = PrgDist_Carries / Prog_Carries) %>%
+#   ggplot(aes(x= Season_End_Year, y= progressive_carry_yards_per_carry, colour = is_reds, group = Squad)) +
+#   geom_line() +
+#   scale_colour_manual(values = c("grey", "red"))
+
+possession %>%
+  filter(Team_or_Opponent == "team") %>%
+  mutate(is_reds = str_detect(Squad, "Liverpool"),
+         prog_yards_game = PrgDist_Carries / Mins_Per_90) %>%
+  ggplot(aes(x= Season_End_Year, y= prog_yards_game, colour = is_reds, group = Squad)) +
+  geom_line() +
+  scale_colour_manual(values = c("grey", "red"))
+
+
+possession %>%
+  filter(Team_or_Opponent == "team") %>%
+  mutate(is_reds = str_detect(Squad, "Liverpool"),
+         carry_pen_area_game = CPA_Carries / Mins_Per_90) %>%
+  ggplot(aes(x= Season_End_Year, y= carry_pen_area_game, colour = is_reds, group = Squad)) +
+  geom_line() +
+  scale_colour_manual(values = c("grey", "red"))
+
+
+possession %>%
+  filter(Team_or_Opponent == "team") %>%
+  mutate(is_reds = str_detect(Squad, "Liverpool"),
+         miscontrol_game = Mis_Carries / Mins_Per_90) %>%
+  ggplot(aes(x= Season_End_Year, y= miscontrol_game, colour = is_reds, group = Squad)) +
+  geom_line() +
+  scale_colour_manual(values = c("grey", "red"))
+```
+
+
+
+
+
+# Per Game Stats
+
+```{r}
+liv_urls <- get_match_urls(country = "ENG", gender = "M", season_end_year = c(2018:2021))
+
+liv_idx <- grep("liverpool", tolower(liv_urls))
+
+liv_urls <- liv_urls[liv_idx]
+
+
+match_possession <- get_advanced_match_stats(match_url = liv_urls, stat_type = "possession", team_or_player = "team")
+saveRDS(match_possession, here::here("liverpool", "reds_match_possession_team.rds"))
+```
+
+```{r}
+match_possession <- readRDS(here::here("liverpool", "reds_match_possession_team.rds"))
+
+match_possession_reds_only <- match_possession %>% 
+  mutate(winner = case_when(
+    Home_Score > Away_Score ~ Home_Team,
+    Away_Score > Home_Score ~ Away_Team,
+    Home_Score == Away_Score ~ "Draw"
+  )) %>% 
+  filter(Team == "Liverpool") %>% 
+  mutate(result = case_when(
+    winner == "Draw" ~ "Draw",
+    winner == "Liverpool" ~ "Win",
+    winner != "Liverpool" ~ "Loss"
+  ))
+
+```
+
+
+```{r}
+match_possession_reds_only %>% 
+  ggplot(aes(x= Touches_Touches, fill = result)) +
+  geom_density(alpha = 0.5)
+
+match_possession_reds_only %>% 
+  ggplot(aes(x= `Att Pen_Touches`, fill = result)) +
+  geom_density(alpha = 0.5)
+
+
+match_possession_reds_only %>% 
+  ggplot(aes(x= PrgDist_Carries, fill = result)) +
+  geom_density(alpha = 0.5)
+
+match_possession_reds_only %>% 
+  ggplot(aes(x= PrgDist_Carries, y = result)) +
+  geom_boxplot()
+
+# interesting - games won have more carries into the penalty area 
+match_possession_reds_only %>% 
+  ggplot(aes(x= CPA_Carries, y = result)) +
+  geom_boxplot() +
+  scale_x_continuous(breaks = c(0:13))
+
+
+
+match_possession_reds_only %>% 
+  ggplot(aes(x= `Att 3rd_Touches`, y = result)) +
+  geom_boxplot()
+
+# This is really interesting - this season, much more touches in pen area for losses
+match_possession_reds_only %>% 
+  ggplot(aes(x= `Att Pen_Touches`, y = result)) +
+  geom_boxplot() + facet_wrap(~ Season)
+
+match_possession_reds_only %>% 
+  filter(Season == "2020-2021")  %>% 
+  mutate(Matchweek = as.factor(str_extract(Matchweek, "[[:digit:]]+"))) %>%  
+  ggplot(aes(x= `Att Pen_Touches`, y = Matchweek, fill = result)) +
+  geom_col()
+```
+
+
+```{r}
+match_possession_reds_only <- match_possession_reds_only %>% 
+  mutate(xg_diff = case_when(
+    Home_Team == "Liverpool" ~ Home_Score - Home_xG,
+    Away_Team == "Liverpool" ~ Away_Score - Away_xG
+  ))
+
+
+match_possession_reds_only %>% 
+  ggplot(aes(x= xg_diff, y = result)) +
+  geom_boxplot()
+
+
+match_possession_reds_only %>% 
+  ggplot(aes(x= xg_diff, y = result)) +
+  geom_boxplot() +
+  facet_wrap(~ Season)
+```
+
+
+
+
+```{r}
+liv_urls <- get_match_urls(country = "ENG", gender = "M", season_end_year = c(2018:2021))
+
+liv_idx <- grep("liverpool", tolower(liv_urls))
+
+liv_urls <- liv_urls[liv_idx]
+
+
+match_passing <- get_advanced_match_stats(match_url = liv_urls, stat_type = "passing", team_or_player = "player")
+saveRDS(match_passing, here::here("liverpool", "reds_match_passing_players.rds"))
+
+match_summary <- get_advanced_match_stats(match_url = liv_urls, stat_type = "summary", team_or_player = "player")
+saveRDS(match_summary, here::here("liverpool", "reds_match_summary_players.rds"))
+```
+
+
+
+```{r}
+liv_passing <- match_passing %>% 
+  filter(Team == "Liverpool") %>% 
+  separate(., Match_Date, into = c("Wday", "Month", "Day", "Year"), sep = " ", remove = F) %>% 
+  mutate(Day = gsub(",", "", Day) %>% as.numeric(),
+         Year = as.numeric(Year),
+         Month = match(Month, month.name),
+         Match_Date_Clean = lubridate::ymd(paste(Year, Month, Day, sep = "-"))) 
+
+
+liv_ppa_grouped <- liv_passing %>% 
+  group_by(Season, Match_Date_Clean, Game_URL, Team) %>% 
+  summarise(total_PPA = sum(PPA, na.rm = T)) %>% 
+  arrange(Season, Match_Date_Clean) %>% 
+  group_by(Season) %>% mutate(game_num = row_number()) %>% ungroup()
+
+
+liv_ppa_grouped %>% 
+  ggplot(aes(x= game_num, y= total_PPA, group = 1, colour = Season)) +
+  geom_line() +
+  facet_wrap(~ Season, nrow=1) +
+  theme(legend.position = "none")
+```
+
+
+
+```{r}
+liv_shooting <- match_summary %>% 
+  filter(Team == "Liverpool") %>% 
+  separate(., Match_Date, into = c("Wday", "Month", "Day", "Year"), sep = " ", remove = F) %>% 
+  mutate(Day = gsub(",", "", Day) %>% as.numeric(),
+         Year = as.numeric(Year),
+         Month = match(Month, month.name),
+         Match_Date_Clean = lubridate::ymd(paste(Year, Month, Day, sep = "-"))) 
+
+
+liv_shooting_grouped <- liv_shooting %>% 
+  group_by(Season, Match_Date_Clean, Game_URL, Team) %>% 
+  summarise(total_shots = sum(Sh, na.rm = T),
+            total_SoT = sum(SoT, na.rm = T)) %>% 
+  arrange(Season, Match_Date_Clean) %>% 
+  group_by(Season) %>% mutate(game_num = row_number()) %>% ungroup()
+
+
+liv_shooting_grouped %>% 
+  ggplot(aes(x= game_num, y= total_shots, group = 1, colour = Season)) +
+  geom_line() +
+  facet_wrap(~ Season, nrow=1) +
+  theme(legend.position = "none")
+
+liv_shooting_grouped %>% 
+  ggplot(aes(x= game_num, y= total_SoT, group = 1, colour = Season)) +
+  geom_line() +
+  facet_wrap(~ Season, nrow=1) +
+  theme(legend.position = "none")
+
+
+
+test <- liv_ppa_grouped %>% left_join(liv_shooting_grouped, by = c("Match_Date_Clean", "game_num", "Game_URL", "Team", "Season"))
+
+
+test %>% 
+  ggplot(aes(x= total_PPA, y= total_shots, colour = Season)) +
+  geom_point() +
+  facet_wrap(~ Season)
+cor(test$total_PPA, test$total_shots)
+
+
+test %>% 
+  ggplot(aes(x= total_PPA, y= total_SoT)) +
+  geom_point()
+cor(test$total_PPA, test$total_SoT)
+
+
+test %>%
+  mutate(shots_per_PPA = total_shots / total_PPA) %>% 
+  ggplot(aes(x= game_num, y= shots_per_PPA, group=1)) +
+  geom_line() +
+  facet_wrap(~ Season)
+
+
+```
+
+
+
+
