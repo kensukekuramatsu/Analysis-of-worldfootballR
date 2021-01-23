@@ -3,6 +3,14 @@
 This page will be a index of the analysis that was released using the code in the sub-directories.
 
 
+## Liverpools front three and xG
+
+The code for the below tweet can be found [here]()
+
+<blockquote class="twitter-tweet"><p lang="en" dir="ltr"><a href="https://twitter.com/LFC?ref_src=twsrc%5Etfw">@LFC</a> need Bobby and Sadio to start taking their chances to have any shot at the title <a href="https://twitter.com/hashtag/worldfootballR?src=hash&amp;ref_src=twsrc%5Etfw">#worldfootballR</a> <a href="https://twitter.com/hashtag/rstats?src=hash&amp;ref_src=twsrc%5Etfw">#rstats</a> <a href="https://twitter.com/xGPhilosophy?ref_src=twsrc%5Etfw">@xGPhilosophy</a> <a href="https://twitter.com/RedFromNZ?ref_src=twsrc%5Etfw">@RedFromNZ</a> <a href="https://t.co/13unNi1NsX">pic.twitter.com/13unNi1NsX</a></p>&mdash; Jase_Ziv83 (@jaseziv) <a href="https://twitter.com/jaseziv/status/1352768332424830978?ref_src=twsrc%5Etfw">January 23, 2021</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+
+***
+
 ## Top 6 Premier League Teams xG to Goals analysis
 
 The code for the below tweet can be found [here](https://github.com/JaseZiv/Analysis-of-worldfootballR/blob/main/published/top-6-xG/top-6-xg-performance.R)
