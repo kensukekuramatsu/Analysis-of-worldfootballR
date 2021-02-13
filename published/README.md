@@ -3,6 +3,14 @@
 This page will be a index of the analysis that was released using the code in the sub-directories.
 
 
+## EPL player age valuation curve
+
+The code for the below tweet can be found [here]()
+
+<blockquote class="twitter-tweet"><p lang="en" dir="ltr">Using <a href="https://twitter.com/hashtag/worldfootballR?src=hash&amp;ref_src=twsrc%5Etfw">#worldfootballR</a> to analyse the age valuation curve in the <a href="https://twitter.com/premierleague?ref_src=twsrc%5Etfw">@premierleague</a> shows that players are most expensive in their mid-20s <a href="https://twitter.com/hashtag/rstats?src=hash&amp;ref_src=twsrc%5Etfw">#rstats</a>. Package vignette can be found here <a href="https://t.co/EagLLNAEXr">https://t.co/EagLLNAEXr</a> <a href="https://t.co/qhW993vWKo">pic.twitter.com/qhW993vWKo</a></p>&mdash; Jase_Ziv83 (@jaseziv) <a href="https://twitter.com/jaseziv/status/1360535213558755330?ref_src=twsrc%5Etfw">February 13, 2021</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+
+***
+
 ## Liverpools front three and xG
 
 The code for the below tweet can be found [here](https://github.com/JaseZiv/Analysis-of-worldfootballR/blob/main/published/liverpool_front_three_xG/output.R)
