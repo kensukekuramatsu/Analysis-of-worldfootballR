@@ -3,9 +3,17 @@
 This page will be a index of the analysis that was released using the code in the sub-directories.
 
 
+## English Leagues Valuation-Age Curves
+
+The code for the below tweet can be found [here](https://github.com/JaseZiv/Analysis-of-worldfootballR/tree/main/published/eng-leagues-age-valuations)
+
+<blockquote class="twitter-tweet"><p lang="en" dir="ltr">Using <a href="https://twitter.com/hashtag/worldfootballR?src=hash&amp;ref_src=twsrc%5Etfw">#worldfootballR</a> to get player values from transfermarkt, we can see for the English leagues that older players are valued higher in the lower leagues, but not in the EPL. Code here <a href="https://t.co/8R3K1blTV9">https://t.co/8R3K1blTV9</a> <a href="https://twitter.com/hashtag/Rstats?src=hash&amp;ref_src=twsrc%5Etfw">#Rstats</a> <a href="https://t.co/ZwzZ5yXINU">pic.twitter.com/ZwzZ5yXINU</a></p>&mdash; Jase_Ziv83 (@jaseziv) <a href="https://twitter.com/jaseziv/status/1363063556401373189?ref_src=twsrc%5Etfw">February 20, 2021</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+
+***
+
 ## EPL player age valuation curve
 
-The code for the below tweet can be found [here]()
+The code for the below tweet can be found [here](https://github.com/JaseZiv/Analysis-of-worldfootballR/tree/main/published/epl-player-age-curve)
 
 <blockquote class="twitter-tweet"><p lang="en" dir="ltr">Using <a href="https://twitter.com/hashtag/worldfootballR?src=hash&amp;ref_src=twsrc%5Etfw">#worldfootballR</a> to analyse the age valuation curve in the <a href="https://twitter.com/premierleague?ref_src=twsrc%5Etfw">@premierleague</a> shows that players are most expensive in their mid-20s <a href="https://twitter.com/hashtag/rstats?src=hash&amp;ref_src=twsrc%5Etfw">#rstats</a>. Package vignette can be found here <a href="https://t.co/EagLLNAEXr">https://t.co/EagLLNAEXr</a> <a href="https://t.co/qhW993vWKo">pic.twitter.com/qhW993vWKo</a></p>&mdash; Jase_Ziv83 (@jaseziv) <a href="https://twitter.com/jaseziv/status/1360535213558755330?ref_src=twsrc%5Etfw">February 13, 2021</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
 
