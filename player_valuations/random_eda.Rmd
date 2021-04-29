@@ -1,0 +1,153 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+```{r, eval=FALSE, echo=TRUE}
+# devtools::install_github("JaseZiv/worldfootballR")
+library(worldfootballR)
+library(tidyverse)
+
+
+
+vals <- get_player_market_values(country_name = "England", start_year = "2020")
+
+write.csv(vals, here::here("player_valuations", "epl_2021_valuations.csv"), row.names = F)
+```
+
+
+
+
+```{r}
+# devtools::install_github("JaseZiv/worldfootballR")
+library(worldfootballR)
+library(tidyverse)
+
+options(scipen = 999)
+
+epl_vals <- read.csv(here::here("player_valuations", "epl_2021_valuations.csv"), stringsAsFactors = F)
+
+
+epl_summary <- get_season_team_stats(country = "ENG", gender = "M", season_end_year = 2021, stat_type = "league_table")
+saveRDS(epl_summary, here::here("player_valuations", "epl_summary.rds"))
+```
+
+```{r}
+# load fonts
+sysfonts::font_add_google(name = "Chivo", family = "chivo")
+showtext::showtext_auto()
+
+# set theme
+theme_set(theme_minimal() +
+            theme(plot.title = element_text(colour = "black", size = 22, family = "chivo"), 
+                  plot.subtitle = element_text(colour = "grey20", size = 16, family = "chivo"),
+                  axis.text.x = element_text(colour = "grey20", size = 12, family = "chivo"),
+                  axis.text.y = element_text(colour = "grey20", size = 12, family = "chivo"),
+                  axis.title.x = element_text(colour = "grey20", size = 12, family = "chivo"),
+                  axis.title.y = element_text(colour = "grey20", size = 12, family = "chivo"),
+                  plot.caption = element_text(colour = "grey20", size = 10, family = "chivo"),
+                  strip.text = element_text(colour = "grey30", size = 12, face = "bold", family = "chivo")))
+```
+
+
+
+
+```{r}
+epl_vals_team <- epl_vals %>% 
+  group_by(squad) %>% 
+  summarise(total_value = sum(player_market_value_euro, na.rm = T)) %>% 
+  ungroup()
+
+epl_vals_team <- epl_vals_team %>% 
+  mutate(squad = gsub(" FC", "", squad),
+         squad = gsub(" & Hove Albion", "", squad),
+         squad = gsub("United", "Utd", squad),
+         squad = gsub("Leeds Utd", "Leeds United", squad),
+         squad = gsub(" Hotspur", "", squad),
+         squad = gsub("wich Albion", "", squad),
+         squad = gsub("West Ham Utd", "West Ham", squad),
+         squad = gsub("Wolverhampton Wanderers", "Wolves", squad))
+
+
+test <- epl_vals_team %>% 
+  left_join(epl_summary, by = c("squad" = "Squad"))
+```
+
+
+
+```{r}
+test %>%
+  ggplot(aes(x=total_value, y=GF)) +
+  geom_point()
+
+test %>% lm(GF ~ total_value, data = .) %>% summary
+
+
+test %>%
+  ggplot(aes(x=total_value, y=Pts)) +
+  geom_point()
+
+test %>% lm(Pts ~ total_value, data = .) %>% summary
+
+test %>%
+  ggplot(aes(x=total_value, y=xG)) +
+  geom_point()
+
+test %>% lm(xG ~ total_value, data = .) %>% summary
+
+```
+
+
+
+
+
+
+
+
+```{r}
+epl_vals %>% 
+  ggplot(aes(x=player_market_value_euro)) +
+  geom_histogram()
+```
+
+
+
+```{r}
+epl_vals %>% 
+  ggplot(aes(x=player_market_value_euro, y = player_position)) +
+  geom_boxplot()
+```
+
+
+
+```{r}
+epl_vals %>% 
+  group_by(player_nationality) %>% 
+  summarise(n_players = n(),
+            highest_val = max(player_market_value_euro, na.rm = T),
+            median_valuation = median(player_market_value_euro, na.rm = T)) %>% 
+  arrange(desc(median_valuation)) %>% 
+  filter(n_players >= 5) %>% head(15) %>% 
+  mutate(highest_val = scales::dollar(highest_val),
+         median_valuation = scales::dollar(median_valuation))
+```
+
+
+
+```{r}
+epl_vals %>% 
+  group_by(player_age) %>% 
+  summarise(n_players =n(),
+            median_val = median(player_market_value_euro, na.rm = T)) %>% 
+  ggplot(aes(x= player_age, y= median_val, group=1)) +
+  geom_line() +
+  geom_text(aes(x=player_age, y= median_val, label=n_players)) +
+  scale_y_continuous(labels = scales::dollar)
+```
+
+
+

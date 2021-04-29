@@ -1,0 +1,553 @@
+---
+title: "Calculating ELO in Club Football"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# libraries and data
+library(worldfootballR)
+library(tidyverse)
+library(elo)
+```
+
+```{r}
+options(scipen = 999)
+# Set Theme ---------------------------------------------------------------
+# load fonts
+sysfonts::font_add_google(name = "Chivo", family = "chivo")
+showtext::showtext_auto()
+
+# set theme
+theme_set(theme_minimal() +
+            theme(plot.title = element_text(colour = "black", size = 26, family = "chivo", face = "bold"),
+                  plot.title.position = "plot",
+                  plot.subtitle = element_text(colour = "grey20", size = 20, family = "chivo"),
+                  axis.text.x = element_text(colour = "grey20", size = 14, family = "chivo"),
+                  axis.text.y = element_text(colour = "grey20", size = 14, family = "chivo"),
+                  axis.title.x = element_text(colour = "grey20", size = 16, family = "chivo"),
+                  axis.title.y = element_text(colour = "grey20", size = 16, family = "chivo"),
+                  plot.caption = element_text(colour = "grey20", size = 13, family = "chivo"),
+                  strip.text = element_text(colour = "grey30", size = 16, face = "bold", family = "chivo"),
+                  legend.text = element_text(colour = "grey30", size = 14, family = "chivo"),
+                  legend.title = element_text(colour = "grey30", size = 16, face = "bold", family = "chivo"),
+                  text = element_text(colour = "grey20", size = 14, family = "chivo")))
+```
+
+
+
+```{r, eval=FALSE}
+# code to get data using worldfootballR
+aleague <- get_match_results(country = "AUS", gender = "M", season_end_year = c(2014:2021))
+saveRDS(aleague, here::here("elo", "aleague_results.rds"))
+```
+
+
+
+```{r}
+# load data
+aleague <- readRDS(here::here("elo", "aleague_results.rds"))
+
+
+aleague <- aleague %>% 
+  filter(Round == "Regular Season" | is.na(Round)) %>% 
+  filter(!is.na(HomeGoals)) %>% 
+  arrange(Date)
+
+aleague_reg_season21 <- aleague %>% 
+  filter(Season_End_Year == 2021,
+         !is.na(HomeGoals)) %>% 
+  arrange(Date)
+```
+
+
+
+## Different methodologies
+
+### First method 
+
+The first method looked at came from this site: https://footballdatabase.com/methodology.
+
+It has more detail to it, in that it sepcifies a `G` value, that appears to give different weights to big and small wins. I haven't used this method as I don't know who to apply the value to - the winning or losing team, the home or away team, etc?
+
+ELO formula: 
+```
+R_n = R_o + K*G (W - W_e)
+```
+
+Where;
+
+* R_n = The new team rating
+* R_o = The old team rating
+* K = Weight index regarding the tournament of the match
+* G = A number from the index of goal differences
+  * where: If the game is a draw or is won by one goal
+    * G = 1
+  * If the game is won by two goals
+    * G = 1,5
+  * If the game is won by three or more goals
+    * G = (11+N)/8
+    * Where N is the goal difference
+
+* W = The result of the match
+* W_e = The expected result
+  * where: W_e = 1 / (10^(-dr/400) + 1)
+    * Where dr equals the difference in ratings plus 100 points for a team playing at home. So dr of 0 gives 0.5,
+      of 120 gives 0.666 to the higher ranked team and 0.334 to the lower, and of 800 gives 0.99 to the higher
+      ranked team and 0.01 to the lower.
+
+
+For national leagues as follows:
+
+* K=30 for every match of the following leagues: England, Italy, Spain and Germany
+* K=25 for France, Argentina and Brazil
+* K=20 for Netherlands and Portugal
+* K=15 for Belgium, Czech Republic, Greece, Russia, Scotland, Turkey, Ukraine, Chile, Colombia, Ecuador, Mexico, Paraguay, Peru and Uruguay
+* K=10 for Austria, Belarus, Bulgaria, Croatia, Cyprus, Denmark, Finland, Hungary, Ireland Republic, Israel, Norway, Poland, Romania, Serbia, Slovakia, Slovenia, Sweden, Switzerland, Bolivia, Costa Rica, Guatemala, Honduras, United States, Algeria, Cameroon, Egypt, Morocco, Nigeria, South Africa, Tunisia, China PR, Iran, Japan, Korea Republic and Saudi Arabia
+* K=5 for all others
+
+
+
+### 2nd method investigated
+
+The method which was ultimately selected came from tis site: https://opisthokonta.net/?p=404
+
+The code is below:
+
+```
+eloRating <- function(home="Home", away="Away", homeGoals="HomeGoals",
+                      awayGoals="AwayGoals", data, kfactor=24, initialRating=1500,
+                      homeAdvantage=0){
+  
+  data <- data %>% arrange(Date)
+  
+  #Make a list to hold ratings for all teams
+  all.teams <- levels(as.factor(union(levels(as.factor(data[[home]])),
+                                      levels(as.factor(data[[away]])))))
+  
+  
+  start_date <- min(data$Date, na.rm = T) %>% lubridate::floor_date(unit = "month")-1
+  ratings <- rep(initialRating, times=length(all.teams))
+  # names(ratings) <- all.teams
+  ratings <- data.frame(Date = start_date, Team=all.teams, rating=ratings)
+  
+  ratingsOut <- ratings
+  #Loop trough data and update ratings
+  for (idx in 1:dim(data)[1]){
+    Date <- data$Date[idx]
+    #get current ratings
+    homeTeamName <- data[[home]][idx]
+    awayTeamName <- data[[away]][idx]
+    # homeTeamRating <- ratingsOut %>% filter(Team == homeTeamName) %>% arrange(desc(Date)) %>% slice(1) %>% pull(rating) + homeAdvantage
+    homeTeamRating <- ratingsOut %>% filter(Team == homeTeamName) %>% arrange(desc(Date)) %>% slice(1) %>% pull(rating)
+    awayTeamRating <- ratingsOut %>% filter(Team == awayTeamName) %>% arrange(desc(Date)) %>% slice(1) %>% pull(rating)
+    
+    #calculate expected outcome 
+    expectedHome <- 1 / (1 + 10^(((awayTeamRating - homeTeamRating) + homeAdvantage)/400))
+    expectedAway <- 1 - expectedHome
+    
+    #Observed outcome
+    goalDiff <- data[[homeGoals]][idx] - data[[awayGoals]][idx]
+    if (goalDiff == 0){
+      resultHome <- 0.5
+      resultAway <- 0.5
+    } else if (goalDiff < 0){
+      resultHome <- 0
+      resultAway <- 1
+    } else if (goalDiff > 0){
+      resultHome <- 1
+      resultAway <- 0
+    }
+    
+    #update ratings
+    home_new_rating <- as.numeric(homeTeamRating) + kfactor*(resultHome - expectedHome)
+    away_new_rating <- as.numeric(awayTeamRating) + kfactor*(resultAway - expectedAway)
+    
+    test_out <- data.frame(Date, Team=homeTeamName, rating=home_new_rating) %>% 
+      bind_rows(data.frame(Date, Team=awayTeamName, rating=away_new_rating))
+    
+    ratingsOut <- bind_rows(ratingsOut, test_out)
+  }
+  
+  return(ratingsOut) 
+}
+```
+
+### Need to also look at the below method:
+https://stuartlacy.co.uk/2017/08/31/implementing-an-elo-rating-system-for-european-football/
+
+
+### Elo model selected - the `elo` package of course!
+
+The `elo` package is already designed for this and boy am I glad!
+
+Of the three options below, I will use the third, which includes adding a home team adjustment of 40, and `k` will take into account the margin of victory, maning more elo awarded for larger victories, but on a log scale, so not as much as wins get way bigger than expected 
+```
+# adjustment for winning margin
+test <- elo.run(score(HomeGoals, AwayGoals) ~ Home + Away +
+                  k(20*log(abs(HomeGoals - AwayGoals) + 1)), data = aleague) %>% data.frame()
+
+test <- bind_cols(
+  aleague %>% select(Season_End_Year, Date, HomeGoals, AwayGoals),
+  test
+)
+
+
+# without the adjustement for winning margin
+test2 <- elo.run(score(HomeGoals, AwayGoals) ~ Home + Away, data = aleague, k=20) %>% data.frame()
+
+test2 <- bind_cols(
+  aleague %>% select(Season_End_Year, Date, HomeGoals, AwayGoals),
+  test2
+)
+
+
+# adjust for home team and include margin adjustment
+test3 <- elo.run(score(HomeGoals, AwayGoals) ~ adjust(Home, 40) + Away +
+                   k(20*log(abs(HomeGoals - AwayGoals) + 1)), data = aleague) %>% data.frame()
+
+test3 <- bind_cols(
+  aleague %>% select(Season_End_Year, Date, HomeGoals, AwayGoals),
+  test3
+)
+```
+
+
+```{r, eval=FALSE}
+# eloRating <- function(home="Home", away="Away", homeGoals="HomeGoals",
+#                       awayGoals="AwayGoals", data, kfactor=20, initialRating=1500,
+#                       homeAdvantage=0){
+#   
+#   data <- data %>% arrange(Date)
+#   
+#   #Make a list to hold ratings for all teams
+#   all.teams <- levels(as.factor(union(levels(as.factor(data[[home]])),
+#                                       levels(as.factor(data[[away]])))))
+#   
+#   
+#   start_date <- min(data$Date, na.rm = T) %>% lubridate::floor_date(unit = "month")-1
+#   ratings <- rep(initialRating, times=length(all.teams))
+#   # names(ratings) <- all.teams
+#   ratings <- data.frame(Date = start_date, Team=all.teams, rating=ratings)
+#   
+#   ratingsOut <- ratings
+#   #Loop trough data and update ratings
+#   for (idx in 1:dim(data)[1]){
+#     Date <- data$Date[idx]
+#     Season_End <- data$Season_End_Year[idx]
+#     #get current ratings
+#     homeTeamName <- data[[home]][idx]
+#     awayTeamName <- data[[away]][idx]
+#     # homeTeamRating <- ratingsOut %>% filter(Team == homeTeamName) %>% arrange(desc(Date)) %>% slice(1) %>% pull(rating) + homeAdvantage
+#     homeTeamRating <- ratingsOut %>% filter(Team == homeTeamName) %>% arrange(desc(Date)) %>% slice(1) %>% pull(rating)
+#     awayTeamRating <- ratingsOut %>% filter(Team == awayTeamName) %>% arrange(desc(Date)) %>% slice(1) %>% pull(rating)
+#     
+#     #calculate expected outcome 
+#     expectedHome <- 1 / (1 + 10^(((awayTeamRating - homeTeamRating) + homeAdvantage)/400))
+#     expectedAway <- 1 - expectedHome
+#     
+#     #Observed outcome
+#     goalDiff <- data[[homeGoals]][idx] - data[[awayGoals]][idx]
+#     if (goalDiff == 0){
+#       resultHome <- 0.5
+#       resultAway <- 0.5
+#     } else if (goalDiff < 0){
+#       resultHome <- 0
+#       resultAway <- 1
+#     } else if (goalDiff > 0){
+#       resultHome <- 1
+#       resultAway <- 0
+#     }
+#     
+#     #update ratings
+#     home_new_rating <- as.numeric(homeTeamRating) + kfactor*(resultHome - expectedHome)
+#     away_new_rating <- as.numeric(awayTeamRating) + kfactor*(resultAway - expectedAway)
+#     
+#     test_out <- data.frame(Date, Season_End, Team=homeTeamName, rating=home_new_rating) %>% 
+#       bind_rows(data.frame(Date, Season_End, Team=awayTeamName, rating=away_new_rating))
+#     
+#     ratingsOut <- bind_rows(ratingsOut, test_out)
+#   }
+#   
+#   return(ratingsOut) 
+# }
+```
+
+
+
+
+## Analysis
+
+We can use the function to calculate the team's running ELO metric, with the start year being 2014, and all teams given an initial rating of 1500 to start that season.
+
+```{r}
+# * where: If the game is a draw or is won by one goal
+#     * G = 1
+#   * If the game is won by two goals
+#     * G = 1,5
+#   * If the game is won by three or more goals
+#     * G = (11+N)/8
+#     * Where N is the goal difference
+
+# calculate goal margin index:
+
+calc_goal_index <- function(home_goals, away_goals) {
+  if(abs(home_goals - away_goals) <= 1) {
+    G <- 1
+  } else if (abs(home_goals - away_goals) == 2) {
+    G <- 1.5
+  } else {
+    G <- (11 + abs(home_goals - away_goals))/8
+  }
+}
+
+
+aleague <- aleague %>% 
+  mutate(goal_index = mapply(calc_goal_index, HomeGoals, AwayGoals))
+
+# # adjust for home team and include margin adjustment
+# elo_since_2014 <- elo.run(score(HomeGoals, AwayGoals) ~ adjust(Home, 40) + Away +
+#                    k(20*log(abs(HomeGoals - AwayGoals) + 1)), data = aleague) %>% data.frame()
+# 
+# elo_since_2014 <- bind_cols(
+#   aleague %>% select(Season_End_Year, Date, HomeGoals, AwayGoals),
+#   elo_since_2014
+# )
+
+
+# adjust for home team and include margin adjustment, but this margin has been calculated using the G index
+elo_since_2014 <- elo.run(score(HomeGoals, AwayGoals) ~ adjust(Home, 40) + Away +
+                   k(20*goal_index), data = aleague) %>% data.frame()
+
+elo_since_2014 <- bind_cols(
+  aleague %>% select(Season_End_Year, Date, HomeGoals, AwayGoals),
+  elo_since_2014
+)
+
+
+
+# elo_since_2014 <- elo_since_2014 %>% 
+#   mutate(team.A = 
+#            case_when(
+#              team.A == "Melb Heart" ~ "Melb City",
+#              TRUE ~ Team),
+#          team.B = 
+#            case_when(
+#              team.B == "Melb Heart" ~ "Melb City",
+#              TRUE ~ Team))
+    
+
+saveRDS(elo_since_2014, here::here("elo", "calculated_aleague_elos.rds"))
+
+elo_since_2014_cleaned <- elo_since_2014 %>% 
+  select(Season_End_Year, Date, Team=team.A, GF=HomeGoals, Opponent=team.B, GA=AwayGoals, pWin=p.A, Elo=elo.A, Opp_Elo=elo.B) %>% mutate(home_away="Away") %>% 
+  bind_rows(
+    elo_since_2014 %>% 
+      mutate(home_away="Away", pWin = (1-p.A)) %>% 
+      select(Season_End_Year, Date, Team=team.B, GF=AwayGoals, Opponent=team.A, GA=HomeGoals, Elo=elo.B, Opp_Elo=elo.A)
+  )
+
+
+elo_since_2014_cleaned %>% 
+  ggplot(aes(x= Date, y= Elo, group=Team)) +
+  geom_hline(yintercept = 1500, linetype=2, colour="orange") +
+  geom_line(colour="grey40", size=1) +
+  facet_wrap(~ Team)
+```
+
+
+
+And we can also do the analysis for a single season
+
+```{r}
+aleague_reg_season21 <- aleague_reg_season21 %>% 
+  mutate(goal_index = mapply(calc_goal_index, HomeGoals, AwayGoals))
+
+# # adjust for home team and include margin adjustment
+# elo_this_season <- elo.run(score(HomeGoals, AwayGoals) ~ adjust(Home, 40) + Away +
+#                    k(20*log(abs(HomeGoals - AwayGoals) + 1)), data = aleague_reg_season21) %>% data.frame()
+# 
+# elo_this_season <- bind_cols(
+#   aleague_reg_season21 %>% select(Season_End_Year, Date, HomeGoals, AwayGoals),
+#   elo_this_season
+# )
+
+
+# adjust for home team and include margin adjustment, but this margin has been calculated using the G index
+elo_this_season <- elo.run(score(HomeGoals, AwayGoals) ~ adjust(Home, 40) + Away +
+                   k(20*goal_index), data = aleague_reg_season21) %>% data.frame()
+
+elo_this_season <- bind_cols(
+  aleague_reg_season21 %>% select(Season_End_Year, Date, HomeGoals, AwayGoals),
+  elo_this_season
+)
+
+
+elo_this_season_cleaned <- elo_this_season %>% 
+  select(Season_End_Year, Date, Team=team.A, GF=HomeGoals, Opponent=team.B, GA=AwayGoals, pWin=p.A, Elo=elo.A, Opp_Elo=elo.B, TeamUpdate=update.A) %>% mutate(home_away="Home") %>% 
+  bind_rows(
+    elo_this_season %>% 
+      mutate(home_away="Away", pWin = (1-p.A)) %>% 
+      select(Season_End_Year, Date, Team=team.B, GF=AwayGoals, Opponent=team.A, GA=HomeGoals, pWin, Elo=elo.B, Opp_Elo=elo.A, home_away, , TeamUpdate=update.B)
+  )
+
+
+elo_this_season_cleaned %>% 
+  arrange(desc(Date)) %>% 
+  distinct(Team, .keep_all=T) %>% summarise(avg_rating = mean(Elo))
+
+elo_this_season_cleaned %>% 
+  ggplot(aes(x= Date, y= Elo, group=Team)) +
+  geom_hline(yintercept = 1500, linetype=2, colour="orange") +
+  geom_line(colour="grey40", size=1) +
+  facet_wrap(~ Team)
+
+
+elo_this_season_cleaned %>% 
+  arrange(desc(Date)) %>% 
+  distinct(Team, .keep_all=T) %>% 
+  arrange(desc(Elo)) %>% 
+  select(Date, Team, Elo) %>% view()
+```
+
+
+The below code allows us to calculate a single season ELO:
+
+```{r}
+# all_elo <- data.frame()
+# for(each_season in unique(aleague$Season_End_Year)) {
+#   
+#   df <- eloRating(data = aleague %>% filter(Season_End_Year == each_season))
+#   
+#   all_elo <- rbind(all_elo, df)
+# }
+# 
+# saveRDS(all_elo, here::here("elo", "each_season_elo.rds"))
+# 
+# all_elo %>% 
+#   ggplot(aes(x=Date, y= rating, group = Season_End, colour = factor(Season_End))) +
+#   geom_line() +
+#   facet_wrap(~ Team) +
+#   theme(legend.position = "top")
+```
+
+
+The below code allows us to calculate a single season ELO:
+
+```{r}
+all_elo <- data.frame()
+for(each_season in unique(aleague$Season_End_Year)) {
+  
+  df <- aleague %>% filter(Season_End_Year == each_season) %>% 
+    elo.run(score(HomeGoals, AwayGoals) ~ adjust(Home, 40) + Away +
+                   k(20*goal_index), data = .) %>% data.frame()
+  
+  df <- bind_cols(
+    aleague %>% filter(Season_End_Year == each_season) %>% select(Season_End_Year, Date, HomeGoals, AwayGoals),
+    df
+)
+  
+  all_elo <- rbind(all_elo, df)
+}
+
+
+all_elo_cleaned <- all_elo %>% 
+  select(Season_End_Year, Date, Team=team.A, GF=HomeGoals, Opponent=team.B, GA=AwayGoals, pWin=p.A, Elo=elo.A, Opp_Elo=elo.B, TeamUpdate=update.A) %>% mutate(home_away="Home") %>% 
+  bind_rows(
+    all_elo %>% 
+      mutate(home_away="Away", pWin = (1-p.A)) %>% 
+      select(Season_End_Year, Date, Team=team.B, GF=AwayGoals, Opponent=team.A, GA=HomeGoals, pWin, Elo=elo.B, Opp_Elo=elo.A, home_away, , TeamUpdate=update.B)
+  )
+
+
+saveRDS(all_elo, here::here("elo", "each_season_elo.rds"))
+
+all_elo_cleaned %>% 
+  ggplot(aes(x=Date, y= Elo, group = Season_End_Year, colour = factor(Season_End_Year))) +
+  geom_line() +
+  facet_wrap(~ Team) +
+  theme(legend.position = "top")
+
+all_elo_cleaned %>% 
+  ggplot(aes(x=Date, y= Elo, group = Season_End_Year, colour = factor(Season_End_Year))) +
+  geom_line() +
+  facet_wrap(~ Team) +
+  theme(legend.position = "top")
+
+
+all_elo_cleaned %>% 
+  group_by(Season_End_Year, Team) %>% 
+  summarise(avg_elo_season = mean(Elo, na.rm = T)) %>% 
+  arrange(desc(avg_elo_season))
+
+
+all_elo_cleaned %>% 
+  group_by(Season_End_Year, Team) %>% 
+  summarise(avg_gains_season = mean(TeamUpdate, na.rm = T)) %>% 
+  arrange(desc(avg_gains_season))
+
+```
+
+
+
+
+
+
+
+
+
+
+```{r}
+epl_2021 <- get_match_results(country = "ENG", gender = "M", season_end_year = 2021)
+
+epl_2021 <- epl_2021 %>% filter(!is.na(HomeGoals))
+
+
+epl_2021 <- epl_2021 %>% 
+  mutate(goal_index = mapply(calc_goal_index, HomeGoals, AwayGoals))
+
+
+# adjust for home team and include margin adjustment, but this margin has been calculated using the G index
+epl_elo_this_season <- elo.run(score(HomeGoals, AwayGoals) ~ adjust(Home, 40) + Away +
+                   k(20*goal_index), data = epl_2021) %>% data.frame()
+
+
+
+epl_elo_this_season <- bind_cols(
+  epl_2021 %>% select(Season_End_Year, Date, HomeGoals, AwayGoals),
+  epl_elo_this_season
+)
+
+
+epl_elo_cleaned <- epl_elo_this_season %>% 
+  select(Season_End_Year, Date, Team=team.A, GF=HomeGoals, Opponent=team.B, GA=AwayGoals, pWin=p.A, Elo=elo.A, Opp_Elo=elo.B, TeamUpdate=update.A) %>% mutate(home_away="Home") %>% 
+  bind_rows(
+    epl_elo_this_season %>% 
+      mutate(home_away="Away", pWin = (1-p.A)) %>% 
+      select(Season_End_Year, Date, Team=team.B, GF=AwayGoals, Opponent=team.A, GA=HomeGoals, pWin, Elo=elo.B, Opp_Elo=elo.A, home_away, , TeamUpdate=update.B)
+  )
+
+
+epl_elo_cleaned %>% 
+  ggplot(aes(x= Date, y= Elo, group=Team)) +
+  geom_hline(yintercept = 1500, linetype=2, colour="orange") +
+  geom_line(colour="grey40", size=1) +
+  facet_wrap(~ Team)
+
+
+epl_elo_cleaned %>% 
+  arrange(desc(Date)) %>% 
+  distinct(Team, .keep_all=T) %>% view() %>% 
+  arrange(desc(Elo)) %>% 
+  select(Date, Team, Elo)
+```
+
+
+
+
+
+
+
