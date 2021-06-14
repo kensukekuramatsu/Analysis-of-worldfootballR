@@ -35,7 +35,7 @@ top5_xfers_2010_2020 %>% filter(is.na(league)) %>% count(country)
 
 # from the above validation, we can see that there are some Ligue 1 teams without a league, let's fix that:
 top5_xfers_2010_2020 <- top5_xfers_2010_2020 %>% 
-  mutate(ifelse(is.na(league), "Ligue 1", league))
+  mutate(league = ifelse(is.na(league), "Ligue 1", league))
 
 
 # load fonts
