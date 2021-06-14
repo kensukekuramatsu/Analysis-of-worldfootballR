@@ -3,6 +3,15 @@
 This page will be a index of the analysis that was released using the code in the sub-directories.
 
 
+## Home Grown Transfers In
+
+The code for the below tweet can be found [here](https://github.com/JaseZiv/Analysis-of-worldfootballR/tree/main/published/home-grown-transfers)
+
+<blockquote class="twitter-tweet"><p lang="en" dir="ltr">Serie A teams buy home-grown players more than any of the other top 5 Euro league teams. Wonder if Brexit continues the recent upward trend for the EPL teams? <a href="https://twitter.com/hashtag/worldfootballR?src=hash&amp;ref_src=twsrc%5Etfw">#worldfootballR</a> <a href="https://twitter.com/hashtag/rstats?src=hash&amp;ref_src=twsrc%5Etfw">#rstats</a> <a href="https://t.co/bQNcYnOzow">pic.twitter.com/bQNcYnOzow</a></p>&mdash; Jase_Ziv83 (@jaseziv) <a href="https://twitter.com/jaseziv/status/1404390914244501523?ref_src=twsrc%5Etfw">June 14, 2021</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+
+***
+
+
 ## English Leagues Valuation-Age Curves
 
 The code for the below tweet can be found [here](https://github.com/JaseZiv/Analysis-of-worldfootballR/tree/main/published/eng-leagues-age-valuations)

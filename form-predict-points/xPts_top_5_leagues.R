@@ -1,6 +1,26 @@
 library(worldfootballR)
 library(tidyverse)
 
+options(scipen = 999)
+# Set Theme ---------------------------------------------------------------
+# load fonts
+sysfonts::font_add_google(name = "Chivo", family = "chivo")
+showtext::showtext_auto()
+
+# set theme
+theme_set(theme_minimal() +
+            theme(plot.title = element_text(colour = "black", size = 26, family = "chivo", face = "bold"),
+                  plot.title.position = "plot",
+                  plot.subtitle = element_text(colour = "grey20", size = 20, family = "chivo"),
+                  axis.text.x = element_text(colour = "grey20", size = 14, family = "chivo"),
+                  axis.text.y = element_text(colour = "grey20", size = 14, family = "chivo"),
+                  axis.title.x = element_text(colour = "grey20", size = 16, family = "chivo"),
+                  axis.title.y = element_text(colour = "grey20", size = 16, family = "chivo"),
+                  plot.caption = element_text(colour = "grey20", size = 13, family = "chivo"),
+                  strip.text = element_text(colour = "grey30", size = 16, face = "bold", family = "chivo"),
+                  legend.text = element_text(colour = "grey30", size = 14, family = "chivo"),
+                  legend.title = element_text(colour = "grey30", size = 16, face = "bold", family = "chivo"),
+                  text = element_text(colour = "grey20", size = 14, family = "chivo")))
 
 
 # results <- get_match_results(country = c("ENG", "GER", "ITA", "ESP", "FRA"), gender = "M", season_end_year = c(2015:2021))
@@ -42,7 +62,7 @@ results <- results %>%
 
 
 
-table <- rbind(table, table_extra)
+table <- bind_rows(table, table_extra)
 
 
 table <- table %>% 
@@ -215,9 +235,9 @@ results %>%
 
 
 reg_season_test %>% 
-  filter(game_num == 19) %>% 
+  filter(game_num == 12) %>% 
   ggplot(aes(x=predicted_points, y= Pts)) +
-  geom_smooth(method = "lm", se=F, colour="steelblue") +
+  geom_smooth(method = "lm", se=T, colour="steelblue") +
   # geom_abline(intercept = 0, slope = 1, size=1, colour="orange") +
   geom_point(position = "jitter") +
   scale_x_continuous(breaks = seq(0, 100, 25)) +
@@ -239,14 +259,14 @@ season_cors_french <- results %>% clean_data(.) %>%
 results %>%
   clean_data(.) %>%
   filter(Competition_Name == "Ligue 1") %>% 
-  filter(game_num == 14) %>%
+  filter(game_num == 12) %>%
   ggplot(aes(x=exp_Pts, y= Pts)) +
-  geom_smooth(method = "lm", se=F, colour="steelblue") +
-  geom_abline(intercept = 0, slope = 1, size=1, colour="orange") +
+  geom_smooth(method = "lm", se=T, colour="steelblue") +
+  # geom_abline(intercept = 0, slope = 1, size=1, colour="orange") +
   geom_point(position = "jitter") +
   scale_x_continuous(breaks = seq(0, 100, 25)) +
   scale_y_continuous(breaks = seq(0, 100, 25)) +
-  geom_text(data = season_cors_french %>% filter(game_num == 14), aes(label= paste0("Correlation: ", season_cor)), x=25, y=100) +
+  geom_text(data = season_cors_french %>% filter(game_num == 12), aes(label= paste0("Correlation: ", season_cor)), x=25, y=95) +
   # scale_x_continuous(limits = c(0, 105), breaks = seq(0, 105, 15)) +
   # scale_y_continuous(limits = c(0, 105), breaks = seq(0, 105, 15)) +
   ggtitle("PREDICTED POINTS AFTER 19 MATCHES", subtitle = "As calculated by points per match at week 10, multipled by matches for the season") +
